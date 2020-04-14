@@ -101,4 +101,4 @@ ${SUDO} docker run -d \
   --device /dev/dri \
   ${VOLUMES} \
   ${ZOOM_EXTRA_DOCKER_ARGUMENTS} \
-  mdouchement/zoom-us:latest ${prog} $@ >/dev/null
+  zoom ${prog} $@ >/dev/null
