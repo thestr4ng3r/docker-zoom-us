@@ -2,6 +2,7 @@
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 ZOOM_US_USER=zoom
+ZOOM_CONFIG_PREFIX=${HOME}/.local/share/zoom
 
 # do we need to use sudo to start docker containers?
 ( id -Gn | grep -q docker ) || SUDO=sudo
@@ -52,8 +53,8 @@ prepare_docker_volume_parameters() {
   touch ${XAUTH}
   xauth nlist :0 | sed -e 's/^..../ffff/' | xauth -f ${XAUTH} nmerge -
 
-  VOLUMES+=" --volume=${HOME}/.config:/home/${ZOOM_US_USER}/.config"
-  VOLUMES+=" --volume=${HOME}/.zoom:/home/${ZOOM_US_USER}/.zoom"
+  VOLUMES+=" --volume=${ZOOM_CONFIG_PREFIX}/.config:/home/${ZOOM_US_USER}/.config"
+  VOLUMES+=" --volume=${ZOOM_CONFIG_PREFIX}/.zoom:/home/${ZOOM_US_USER}/.zoom"
   VOLUMES+=" --volume=${XSOCK}:${XSOCK}"
   VOLUMES+=" --volume=${XAUTH}:${XAUTH}"
   VOLUMES+=" --volume=/run/user/${USER_UID}/pulse:/run/pulse"
