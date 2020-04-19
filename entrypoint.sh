@@ -1,16 +1,19 @@
 #!/bin/bash
+
+echo "Entrypoint"
+
+set -x
 set -e
 
-USER_UID=${USER_UID:-1000}
-USER_GID=${USER_GID:-1000}
+USER_UID=1000 #${USER_UID:-1000}
+USER_GID=1000 #${USER_GID:-1000}
 
 ZOOM_US_USER=zoom
 
 install_zoom_us() {
   echo "Installing zoom-us-wrapper..."
   install -m 0755 /var/cache/zoom-us/zoom-us-wrapper /target/
-  echo "Installing zoom-us..."
-  ln -sf zoom-us-wrapper /target/zoom
+  install -m 0755 /var/cache/zoom-us/zoom /target/
 }
 
 uninstall_zoom_us() {
@@ -21,18 +24,14 @@ uninstall_zoom_us() {
 }
 
 create_user() {
-  # create group with USER_GID
   if ! getent group ${ZOOM_US_USER} >/dev/null; then
     groupadd -f -g ${USER_GID} ${ZOOM_US_USER} >/dev/null 2>&1
   fi
 
   # create user with USER_UID
   if ! getent passwd ${ZOOM_US_USER} >/dev/null; then
-    adduser --disabled-login --uid ${USER_UID} --gid ${USER_GID} \
-      --gecos 'ZoomUs' ${ZOOM_US_USER} >/dev/null 2>&1
+	useradd -m --uid ${USER_UID} --gid ${USER_GID} -G wheel,audio,video,utmp -s /bin/bash ${ZOOM_US_USER}
   fi
-  chown ${ZOOM_US_USER}:${ZOOM_US_USER} -R /home/${ZOOM_US_USER}
-  adduser ${ZOOM_US_USER} sudo
 }
 
 grant_access_to_video_devices() {
@@ -53,7 +52,7 @@ grant_access_to_video_devices() {
 
 launch_zoom_us() {
   cd /home/${ZOOM_US_USER}
-  exec sudo -HEu ${ZOOM_US_USER} PULSE_SERVER=/run/pulse/native QT_GRAPHICSSYSTEM="native" $@
+  exec sudo -HEu ${ZOOM_US_USER} PULSE_SERVER=/home/$ZOOM_US_USER/.pulse.socket QT_GRAPHICSSYSTEM="native" $@
 }
 
 case "$1" in
@@ -63,13 +62,13 @@ case "$1" in
   uninstall)
     uninstall_zoom_us
     ;;
-  zoom)
+  root)
+	bash
+	;;
+  *)
     create_user
     grant_access_to_video_devices
     echo "$1"
     launch_zoom_us $@
-    ;;
-  *)
-    exec $@
     ;;
 esac

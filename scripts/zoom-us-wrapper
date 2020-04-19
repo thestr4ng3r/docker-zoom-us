@@ -1,11 +1,8 @@
 #!/bin/bash
 
-PATH=/usr/sbin:/usr/bin:/sbin:/bin
 ZOOM_US_USER=zoom
 ZOOM_CONFIG_PREFIX=${HOME}/.local/share/zoom
-
-# do we need to use sudo to start docker containers?
-( id -Gn | grep -q docker ) || SUDO=sudo
+IMAGE_TAG=zoom
 
 USER_UID=$(id -u)
 USER_GID=$(id -g)
@@ -18,21 +15,12 @@ if [ -z "${DOWNLOAD_DIR}" ]; then
     DOWNLOAD_DIR="${HOME}/Downloads"
 fi;
 
-list_commands() {
-  echo ""
-  echo "Launch zoom-us using:"
-  echo "  zoom-us                     OR "
-  echo "  zoom-us-wrapper zoom-us"
-  echo ""
-  exit 1
-}
-
 cleanup_stopped_zoom_us_instances(){
   echo "Cleaning up stopped zoom-us instances..."
   for c in $(${SUDO} docker ps -a -q)
   do
     image="$(${SUDO} docker inspect -f {{.Config.Image}} ${c})"
-    if [ "${image}" == "mdouchement/zoom-us:latest" ]; then
+    if [ "${image}" == "$IMAGE_TAG" ]; then
       running=$(${SUDO} docker inspect -f {{.State.Running}} ${c})
       if [ "${running}" != "true" ]; then
         ${SUDO} docker rm "${c}" >/dev/null
@@ -57,7 +45,6 @@ prepare_docker_volume_parameters() {
   VOLUMES+=" --volume=${ZOOM_CONFIG_PREFIX}/.zoom:/home/${ZOOM_US_USER}/.zoom"
   VOLUMES+=" --volume=${XSOCK}:${XSOCK}"
   VOLUMES+=" --volume=${XAUTH}:${XAUTH}"
-  VOLUMES+=" --volume=/run/user/${USER_UID}/pulse:/run/pulse"
 }
 
 prepare_docker_device_parameters() {
@@ -71,35 +58,22 @@ prepare_docker_device_parameters() {
   done
 }
 
-prog=$(basename $0)
-exec=$(which $prog)
-
-if [[ ${prog} == "zoom-us-wrapper" ]]; then
-  case ${1} in
-    zoom)
-      prog=${1}
-      shift
-      ;;
-    *|help)
-      list_commands
-      exit 1
-      ;;
-  esac
-elif [[ -n ${exec} ]]; then
-  # launch host binary if it exists
-  exec ${exec} $@
-fi
-
 cleanup_stopped_zoom_us_instances
 prepare_docker_env_parameters
 prepare_docker_volume_parameters
 prepare_docker_device_parameters
 
-echo "Starting ${prog}..."
-${SUDO} docker run -d \
+DOCKERID=${RANDOM}
+pasocket=$(pactl load-module module-native-protocol-unix socket=$HOME/.config/pulse/docker-socket$DOCKERID auth-anonymous=1)
+
+docker run -it \
   ${ENV_VARS} \
   ${VIDEO_DEVICES} \
   --device /dev/dri \
   ${VOLUMES} \
+  -v $HOME/.config/pulse/docker-socket$DOCKERID:/home/$ZOOM_US_USER/.pulse.socket \
   ${ZOOM_EXTRA_DOCKER_ARGUMENTS} \
-  zoom ${prog} $@ >/dev/null
+  "$IMAGE_TAG" "$@"
+
+pactl unload-module $pasocket
+rm -rf $HOME/.config/pulse/docker-socket$DOCKERID
