@@ -20,4 +20,10 @@ COPY sudoers /etc/sudoers
 
 COPY pulse-client.conf /etc/pulse/client.conf
 
+RUN pacman --noconfirm -S noto-fonts adobe-source-han-sans-jp-fonts qt5-x11extras
+
+# for dev
+#RUN pacman --noconfirm -S base-devel git
+
 ENTRYPOINT ["/sbin/entrypoint.sh"]
+

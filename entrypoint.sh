@@ -31,6 +31,7 @@ create_user() {
   # create user with USER_UID
   if ! getent passwd ${ZOOM_US_USER} >/dev/null; then
 	useradd -m --uid ${USER_UID} --gid ${USER_GID} -G wheel,audio,video,utmp -s /bin/bash ${ZOOM_US_USER}
+	chown ${ZOOM_US_USER} /home/${ZOOM_US_USER} -R
   fi
 }
 
